@@ -22,12 +22,14 @@ import {
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { he } from "date-fns/locale";
+import { useFinanceStore } from "@/lib/store";
 
 const formSchema = z.object({
   type: z.enum(["income", "expense"]),
   amount: z.number().positive("הסכום חייב להיות חיובי"),
   date: z.date(),
   category: z.string().min(1, "יש לבחור קטגוריה"),
+  description: z.string().min(1, "יש להזין תיאור"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -37,19 +39,11 @@ interface QuickAddTransactionProps {
   isOpen?: boolean;
 }
 
-const categories = [
-  "אוכל ומסעדות",
-  "תחבורה",
-  "קניות",
-  "חשבונות ותשתיות",
-  "בידור",
-  "אחר",
-];
-
 const QuickAddTransaction = ({
   onSubmit = async () => {},
   isOpen = true,
 }: QuickAddTransactionProps) => {
+  const { categories } = useFinanceStore();
   const { toast } = useToast();
   const {
     register,
@@ -63,21 +57,34 @@ const QuickAddTransaction = ({
     defaultValues: {
       type: "expense",
       date: new Date(),
-      category: categories[0],
+      category: categories[0]?.id || "",
+      description: "",
     },
   });
 
   const onSubmitForm = async (data: FormData) => {
     try {
       await onSubmit(data);
-      toast.success("העסקה נוספה בהצלחה");
+      toast({
+        title: "העסקה נוספה בהצלחה",
+        description: `${data.type === "income" ? "הכנסה" : "הוצאה"} בסך ${data.amount}₪ נוספה`,
+      });
       reset();
     } catch (error) {
-      toast.error("שגיאה בהוספת העסקה");
+      toast({
+        title: "שגיאה",
+        description: "אירעה שגיאה בהוספת העסקה",
+        variant: "destructive",
+      });
     }
   };
 
   const date = watch("date");
+  const selectedType = watch("type");
+
+  const filteredCategories = categories.filter(
+    (cat) => cat.type === selectedType,
+  );
 
   return (
     <Card className="w-full max-w-[400px] p-6 bg-card">
@@ -111,6 +118,19 @@ const QuickAddTransaction = ({
           />
           {errors.amount && (
             <p className="text-sm text-destructive">{errors.amount.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Input
+            placeholder="תיאור"
+            {...register("description")}
+            className="text-right"
+          />
+          {errors.description && (
+            <p className="text-sm text-destructive">
+              {errors.description.message}
+            </p>
           )}
         </div>
 
@@ -154,9 +174,9 @@ const QuickAddTransaction = ({
               <SelectValue placeholder="בחר קטגוריה" />
             </SelectTrigger>
             <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
+              {filteredCategories.map((cat) => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
                 </SelectItem>
               ))}
             </SelectContent>
