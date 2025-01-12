@@ -15,7 +15,7 @@ const Home = ({
   onTransactionDelete = () => {},
 }: HomeProps) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1400px] mx-auto">
       <h1 className="text-4xl font-bold text-foreground text-center">
         לוח בקרה פיננסי
       </h1>
@@ -23,10 +23,10 @@ const Home = ({
       <BalanceOverview />
 
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className="lg:w-[400px]">
+        <div className="w-full lg:w-[400px]">
           <ExpenseAnalytics />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <TransactionManager
             onTransactionAdd={onTransactionAdd}
             onTransactionEdit={onTransactionEdit}

@@ -2,6 +2,7 @@ import React from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Table,
   TableBody,
@@ -16,7 +17,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreVertical, Pencil, Trash } from "lucide-react";
+import { MoreVertical, Pencil, Trash, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Transaction {
   id: string;
@@ -30,7 +41,8 @@ interface Transaction {
 interface TransactionListProps {
   transactions?: Transaction[];
   onEdit?: (transaction: Transaction) => void;
-  onDelete?: (transactionId: string) => void;
+  onDelete?: (transactionId: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
 const defaultTransactions: Transaction[] = [
@@ -63,8 +75,34 @@ const defaultTransactions: Transaction[] = [
 const TransactionList = ({
   transactions = defaultTransactions,
   onEdit = () => {},
-  onDelete = () => {},
+  onDelete = async () => {},
+  isLoading = false,
 }: TransactionListProps) => {
+  const { toast } = useToast();
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDelete = async (id: string) => {
+    try {
+      setIsDeleting(true);
+      await onDelete(id);
+      toast.success("העסקה נמחקה בהצלחה");
+    } catch (error) {
+      toast.error("שגיאה במחיקת העסקה");
+    } finally {
+      setIsDeleting(false);
+      setDeletingId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card className="w-full h-[400px] bg-card p-4 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </Card>
+    );
+  }
+
   return (
     <Card className="w-full h-[400px] bg-card p-4">
       <ScrollArea className="h-full w-full">
@@ -120,7 +158,7 @@ const TransactionList = ({
                         ערוך
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => onDelete(transaction.id)}
+                        onClick={() => setDeletingId(transaction.id)}
                         className="cursor-pointer text-red-600 dark:text-red-400"
                       >
                         <Trash className="h-4 w-4 ml-2" />
@@ -134,6 +172,34 @@ const TransactionList = ({
           </TableBody>
         </Table>
       </ScrollArea>
+
+      <AlertDialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>האם אתה בטוח?</AlertDialogTitle>
+            <AlertDialogDescription>
+              פעולה זו תמחק את העסקה לצמיתות ולא ניתן יהיה לשחזר אותה.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingId && handleDelete(deletingId)}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                  מוחק...
+                </>
+              ) : (
+                "מחק"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
